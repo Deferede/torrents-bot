@@ -6,41 +6,24 @@ services:
     container_name: torrents-bot
     restart: unless-stopped
     environment:
-      - QBITTORRENT_HOST=qbittorrent
-      - QBITTORRENT_PORT=8080
+      - QBITTORRENT_HOST=${QBITTORRENT_HOST:-localhost}
+      - QBITTORRENT_PORT=${QBITTORRENT_PORT:-8080}
       - QBITTORRENT_USERNAME=${QBITTORRENT_USERNAME:-admin}
       - QBITTORRENT_PASSWORD=${QBITTORRENT_PASSWORD:-admin}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - ADMIN_CHAT_ID=${ADMIN_CHAT_ID}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - DEBUG=${DEBUG:-False}
-    depends_on:
-      - qbittorrent
-    networks:
-      - torrents-net
 
-  qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
-    container_name: qbittorrent
+  cron-restart:
+    image: alpine:latest
+    container_name: cron-restart
     restart: unless-stopped
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/Moscow
-      - WEBUI_PORT=8080
     volumes:
-      - qbittorrent-config:/config
-      - ./downloads:/downloads
-    ports:
-      - "8080:8080"
-      - "6881:6881"
-      - "6881:6881/udp"
-    networks:
-      - torrents-net
-
-volumes:
-  qbittorrent-config:
-
-networks:
-  torrents-net:
-    driver: bridge
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: >
+      sh -c "
+        apk add --no-cache docker-cli &&
+        echo '0 3 * * * docker restart torrents-bot' | crontab - &&
+        crond -f
+      "
