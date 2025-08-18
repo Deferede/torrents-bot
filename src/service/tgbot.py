@@ -17,6 +17,8 @@ class TelegramBotService:
         self.last_message_ids = {}
         # Сохраняем ID последнего сообщения пользователя для каждого чата
         self.last_user_message_ids = {}
+        # Получаем список доверенных пользователей
+        self.trusted_users = self.config.get_trusted_users()
     
     def _setup_handlers(self):
         self.app.add_handler(CommandHandler("start", self.start))
@@ -26,7 +28,25 @@ class TelegramBotService:
         self.app.add_handler(CallbackQueryHandler(self.button_callback))
         self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
     
+    def _is_trusted_user(self, user_id: int) -> bool:
+        """Проверяет является ли пользователь доверенным."""
+        return user_id in self.trusted_users if self.trusted_users else True
+    
+    async def _send_access_denied(self, message, context):
+        """Отправляет сообщение об отказе в доступе."""
+        await message.reply_text(
+            "❌ У вас нет доступа к этой функции\n"
+            "Доступные команды:\n"
+            "• /help - справка\n"
+            "• /myid - ваш ID"
+        )
+    
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        # Проверяем доступ
+        if not self._is_trusted_user(update.message.from_user.id):
+            await self._send_access_denied(update.message, context)
+            return
+            
         # Сохраняем ID последнего сообщения пользователя
         chat_id = update.message.chat.id
         self.last_user_message_ids[chat_id] = update.message.message_id
@@ -56,6 +76,11 @@ class TelegramBotService:
         )
     
     async def torrents(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        # Проверяем доступ
+        if not self._is_trusted_user(update.message.from_user.id):
+            await self._send_access_denied(update.message, context)
+            return
+            
         # Сохраняем ID последнего сообщения пользователя
         chat_id = update.message.chat.id
         self.last_user_message_ids[chat_id] = update.message.message_id
@@ -310,6 +335,11 @@ class TelegramBotService:
         )
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        # Проверяем доступ
+        if not self._is_trusted_user(update.message.from_user.id):
+            await self._send_access_denied(update.message, context)
+            return
+            
         # Сохраняем ID последнего сообщения пользователя
         chat_id = update.message.chat.id
         self.last_user_message_ids[chat_id] = update.message.message_id
@@ -416,6 +446,16 @@ class TelegramBotService:
     async def button_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
         await query.answer()
+        
+        # Проверяем доступ
+        if not self._is_trusted_user(query.from_user.id):
+            await query.message.reply_text(
+                "❌ У вас нет доступа к этой функции\n"
+                "Доступные команды:\n"
+                "• /help - справка\n"
+                "• /myid - ваш ID"
+            )
+            return
         
         if query.data == "torrents":
             await self._show_torrents(query.message, context)

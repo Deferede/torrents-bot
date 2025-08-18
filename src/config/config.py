@@ -23,6 +23,7 @@ class Config:
     # Telegram settings
     TELEGRAM_BOT_TOKEN: str = os.getenv('TELEGRAM_BOT_TOKEN', '')
     ADMIN_CHAT_ID: str = os.getenv('ADMIN_CHAT_ID', '')
+    TRUSTED_USERS_IDS: str = os.getenv('TRUSTED_USERS_IDS', '')
     
     # Application settings
     LOG_LEVEL: str = os.getenv('LOG_LEVEL', 'INFO')
@@ -37,6 +38,13 @@ class Config:
             'username': cls.QBITTORRENT_USERNAME,
             'password': cls.QBITTORRENT_PASSWORD
         }
+    
+    @classmethod
+    def get_trusted_users(cls) -> list:
+        """Get trusted users IDs as a list."""
+        if not cls.TRUSTED_USERS_IDS:
+            return []
+        return [int(user_id.strip()) for user_id in cls.TRUSTED_USERS_IDS.split(',') if user_id.strip()]
 
 # Create a global config instance
 config = Config()
