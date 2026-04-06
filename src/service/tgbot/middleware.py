@@ -58,8 +58,12 @@ class AuthMiddleware:
         self.trusted_users = trusted_users or []
     
     def is_trusted_user(self, user_id: int) -> bool:
-        """Проверяет является ли пользователь доверенным."""
-        return user_id in self.trusted_users if self.trusted_users else True
+        """Проверяет является ли пользователь доверенным.
+
+        По умолчанию доступ закрыт — необходимо явно указать trusted_users.
+        Если список пользователей не задан, доступ запрещён (безопасный default).
+        """
+        return user_id in self.trusted_users if self.trusted_users else False
     
     async def send_access_denied(self, message, context: ContextTypes.DEFAULT_TYPE):
         """Отправляет сообщение об отказе в доступе."""
